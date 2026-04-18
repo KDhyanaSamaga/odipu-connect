@@ -1,375 +1,312 @@
-Here’s a **clean, production-oriented `login.md` reference document** you can directly use while building your system.
+Here’s a **production-ready `user_profile.md`** you can directly use for implementation and reference.
 
 ---
 
-# 📄 `login.md` — Authentication & User Management Design
+# 📄 `profile.md` — User Profile & Password Management
 
 ## 1. Overview
 
 This module handles:
 
-- User Registration (Signup)
-- User Authentication (Login)
-- Token Management (Access + Refresh Tokens)
-- Password Reset Flow
-- Secure API Access (Bearer Token)
-
-Tech Stack:
-
-- **Backend**: FastAPI
-- **Language**: Python
-- **Auth**: JWT (JSON Web Tokens)
-- **Database**: PostgreSQL (Recommended) or MongoDB (Alternative)
+- Viewing user profile details
+- Updating profile information
+- Secure password change flow
+- Authenticated access using JWT (Bearer Token)
 
 ---
 
-## 2. Login & Signup Requirements
+## 2. Features
 
-### 🔐 Login Fields
+### 👤 User Profile
 
-- `email` (required)
-- `password` (required)
+- View personal details
+- Update editable fields
 
-### 📝 Signup Fields
+### 🔐 Change Password
 
-- `name` (required)
-- `email` (required)
-- `password` (required → hashed)
-- `phone` (optional)
-- `date_of_birth` (required)
+- Verify current password
+- Set new password
+- Enforce password rules
 
 ---
 
-## 3. Token Strategy
+## 3. Authentication Requirement
 
-### Tokens Used:
+All profile-related APIs must require:
 
-1. **Access Token**
-   - Short-lived (15–30 mins)
-   - Used for API authentication
-
-2. **Refresh Token**
-   - Long-lived (7–30 days)
-   - Used to generate new access tokens
-
-3. **Bearer Token**
-   - Format: `Authorization: Bearer <access_token>`
-
-### Flow:
-
+```http
+Authorization: Bearer <access_token>
 ```
-Login → Generate Access + Refresh Token
-Access Token expires → Use Refresh Token → Get new Access Token
+
+- Token is validated
+- User is extracted from JWT
+- Unauthorized users → `401`
+
+---
+
+## 4. User Schema (Reference)
+
+```python
+id: UUID
+email: str (required, unique)
+name: str (required)
+password: hashed (required)
+phone: str | None
+date_of_birth: date (required)
+created_at: datetime
+updated_at: datetime
 ```
 
 ---
 
-## 4. Tech Stack Decision: MongoDB vs PostgreSQL
-
-### ✅ Recommended: PostgreSQL
-
-**Why PostgreSQL is better for this module:**
-
-- Strong schema enforcement (important for auth data)
-- ACID compliance (data consistency)
-- Better for relationships (users ↔ complaints)
-- Works well with Alembic migrations
-
-### ❗ MongoDB Use Case:
-
-- If your entire system is already NoSQL-heavy
-- Flexible schema (but less strict validation)
-
-👉 **Final Recommendation:**
-
-- Use **PostgreSQL for authentication**
-- You can still use MongoDB for complaints if needed (hybrid architecture)
+## 5. API Endpoints
 
 ---
 
-## 5. Database Model
+### 🔹 1. Get User Profile
 
-### User Table (PostgreSQL)
-
-```sql
-CREATE TABLE users (
-    id UUID PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    password TEXT NOT NULL,
-    phone VARCHAR(15),
-    date_of_birth DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### Optional: Refresh Tokens Table
-
-```sql
-CREATE TABLE refresh_tokens (
-    id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id),
-    token TEXT NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
----
-
-## 6. API Endpoints
-
-### 🔑 Authentication Routes
-
-#### 1. Signup
-
-```
-POST /signup
-```
-
-**Request Body:**
-
-```json
-{
-  "name": "Dhyana",
-  "email": "user@example.com",
-  "password": "password123",
-  "phone": "9876543210",
-  "date_of_birth": "2002-01-01"
-}
-```
-
----
-
-#### 2. Login
-
-```
-POST /login
+```http
+GET /user/profile
 ```
 
 **Response:**
 
 ```json
 {
-  "access_token": "...",
-  "refresh_token": "...",
-  "token_type": "bearer"
+  "id": "uuid",
+  "name": "Dhyana",
+  "email": "user@gmail.com",
+  "phone": "9876543210",
+  "date_of_birth": "2002-01-01",
+  "created_at": "2026-04-18T10:00:00"
 }
 ```
 
 ---
 
-#### 3. Refresh Token
+### 🔹 2. Update Profile
 
-```
-POST /token/refresh
-```
-
----
-
-#### 4. Forgot Password
-
-```
-POST /login/forgot-password
+```http
+PUT /user/profile
 ```
 
-**Flow:**
-
-- User enters email
-- Send reset link/token via email
-
----
-
-#### 5. Reset Password
-
-```
-POST /login/reset-password
-```
-
----
-
-#### 6. Get Current User
-
-```
-GET /me
-```
-
-Header:
-
-```
-Authorization: Bearer <access_token>
-```
-
----
-
-## 7. Implementation Details (FastAPI)
-
-### Password Hashing
-
-Use:
-
-```python
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def hash_password(password: str):
-    return pwd_context.hash(password)
-
-def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
-```
-
----
-
-### JWT Token Creation
-
-```python
-from jose import jwt
-from datetime import datetime, timedelta
-
-SECRET_KEY = "your_secret"
-ALGORITHM = "HS256"
-
-def create_access_token(data: dict, expires_delta: int = 15):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=expires_delta)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-```
-
----
-
-### Dependency for Protected Routes
-
-```python
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    # decode token and fetch user
-    pass
-```
-
----
-
-## 8. Alembic Setup (Database Migration)
-
-### Install:
-
-```bash
-pip install alembic
-```
-
-### Initialize:
-
-```bash
-alembic init alembic
-```
-
-### Configure `alembic.ini`:
-
-```
-sqlalchemy.url = postgresql://user:password@localhost/dbname
-```
-
----
-
-### Create Migration:
-
-```bash
-alembic revision --autogenerate -m "create users table"
-```
-
-### Apply Migration:
-
-```bash
-alembic upgrade head
-```
-
----
-
-## 9. Testing
-
-### Sample Test Cases
-
-#### ✅ Signup Test
+**Request Body:**
 
 ```json
 {
-  "name": "Test User",
-  "email": "test@gmail.com",
-  "password": "123456",
-  "phone": "9999999999",
-  "date_of_birth": "2000-01-01"
+  "name": "New Name",
+  "phone": "9999999999"
 }
 ```
 
+**Rules:**
+
+- Email should NOT be updated (avoid identity issues)
+- Only allow safe fields (name, phone)
+
 ---
 
-#### ✅ Login Test
+### 🔹 3. Change Password
+
+```http
+POST /user/change-password
+```
+
+**Request Body:**
 
 ```json
 {
-  "email": "test@gmail.com",
-  "password": "123456"
+  "current_password": "oldpassword",
+  "new_password": "newStrongPassword123"
 }
 ```
 
 ---
 
-### Edge Cases
+## 6. Change Password Flow (Important)
 
-- Invalid email format
-- Weak password
-- Duplicate email
-- Expired token
-- Invalid refresh token
+### Step-by-Step:
+
+1. User sends:
+   - current_password
+   - new_password
+
+2. Backend:
+   - Fetch user from token
+   - Verify current password (bcrypt check)
+
+3. If incorrect:
+
+```json
+{
+  "error": "Current password is incorrect"
+}
+```
+
+4. If correct:
+   - Hash new password
+   - Update DB
+   - Invalidate old refresh tokens (optional but recommended)
+
+5. Response:
+
+```json
+{
+  "message": "Password updated successfully"
+}
+```
+
+---
+
+## 7. Password Validation Rules
+
+- Minimum length: 8
+- Must include:
+  - Uppercase
+  - Lowercase
+  - Number
+  - Special character (recommended)
+
+---
+
+## 8. FastAPI Implementation (Core Logic)
+
+### Password Verification
+
+```python
+def change_password(user, current_password, new_password):
+    if not verify_password(current_password, user.password):
+        raise Exception("Invalid current password")
+
+    user.password = hash_password(new_password)
+    db.commit()
+```
+
+---
+
+### Route Example
+
+```python
+@router.post("/user/change-password")
+def change_password_api(data: ChangePasswordSchema, user=Depends(get_current_user)):
+    return change_password(user, data.current_password, data.new_password)
+```
+
+---
+
+## 9. Database Update
+
+```sql
+UPDATE users
+SET password = 'hashed_password',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 'user_id';
+```
 
 ---
 
 ## 10. Security Best Practices
 
 - Always hash passwords (bcrypt)
-- Use HTTPS only
-- Store secrets in `.env`
-- Implement rate limiting on login
-- Add email verification (optional but recommended)
-- Use token blacklisting (for logout)
+- Never return password in API response
+- Use HTTPS
+- Rate limit password attempts
+- Log suspicious activity
 
 ---
 
-## 11. Suggested Folder Structure
+## 11. Optional Enhancements (Recommended)
 
+- 🔁 Logout from all devices after password change
+- 📩 Email notification: “Your password was changed”
+- 🔐 Add 2FA (future scope)
+
+---
+
+## 12. Testing
+
+### ✅ Get Profile
+
+- Valid token → success
+- Invalid token → 401
+
+---
+
+### ✅ Update Profile
+
+```json
+{
+  "name": "Test User Updated",
+  "phone": "8888888888"
+}
 ```
+
+---
+
+### ✅ Change Password (Success)
+
+```json
+{
+  "current_password": "123456",
+  "new_password": "NewPass@123"
+}
+```
+
+---
+
+### ❌ Change Password (Fail)
+
+```json
+{
+  "current_password": "wrongpassword",
+  "new_password": "NewPass@123"
+}
+```
+
+---
+
+## 13. Folder Structure
+
+```bash
 app/
-│── main.py
-│── models/
+│── routes/
 │   └── user.py
 │── schemas/
 │   └── user_schema.py
-│── routes/
-│   └── auth.py
 │── services/
-│   └── auth_service.py
-│── core/
-│   └── security.py
-│── db/
-│   └── database.py
+│   └── user_service.py
 ```
 
 ---
 
-## 12. Final Notes
+## 14. UI Behavior (Frontend Reference)
 
-- Keep auth **separate module**
-- Design APIs **stateless**
-- Make tokens **lightweight but secure**
-- Plan future:
-  - OAuth (Google login)
-  - Role-based access (admin/officer/user)
+### Profile Page:
+
+- Show:
+  - Name
+  - Email (readonly)
+  - Phone
+  - DOB
+
+### Change Password Section:
+
+- Input:
+  - Current Password
+  - New Password
+  - Confirm Password
+
+### UX Flow:
+
+- Validate before API call
+- Show success/error messages
+
+---
+
+## 15. Final Notes
+
+- Keep profile APIs **secure and minimal**
+- Avoid over-exposing user data
+- Always validate inputs strictly
 
 ---
