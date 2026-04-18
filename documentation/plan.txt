@@ -1,0 +1,44 @@
+title : odipu problems
+the name odipu is the old name for the district "UDUPI" which is present in karnataka 
+
+problem:
+There are many unsolved and unresolved and not taken care issues present in the disrtict which are promisseed
+by the MLA,DC,MP and mulcipal corperation ,These just become a unresolved every time and few are ignored 
+the problems can be related to road,electricity,water,bascic facilities ,health,school and all other sectors 
+these politiance just promis the people in the name of votr and just levae it unrecoginsed this shows the lack of \
+responsibility who are in that position
+
+Solution:
+The centralized place where people of udupi caome and uplode their complaint since the govt phone number and email are publically 
+kept by the govt when the user raises the complaint he must enter the detailed complaint in kannada or english and if any phot avalibe 
+attach it with the complaint and it must classify the problem and display it in the website so when evr the new complain is registered a new 
+email and message is sent to respective officers and department so the issue remains resolved untill the govt fixes it as soon as possible
+or 
+just the user need to email to a my email consider a_new_email@gmail.com so when ever the new email comes to inbox or spam there must be a 
+llm call the llm must take the data and then analyze it make it a proper content anf post in the website along if any attachment or photo or video 
+so that the govt peoples go through that and fix or provide the solution 
+
+The System Design:
+so the layers present in this is are 
+Frontend layer <------> Backend layer <------> Databse(NoSQL)
+                Fastapi     |
+                            |Fastapi
+                            |
+    Email Trigger  <----> LLM layer
+
+in the design the backend layer ,email trigger,llm layer plays the most important tast
+so need to create a worker that checks my email every 5min(not decided) the pooling must me taken care 
+the server i hosted must be ready to handeln this so 
+when the event triggers the worker must fetch the content of email first it must process via llm 
+next the important details are extracted according to the tables present in the table and stores and  before it must store in the Database
+next the llms its self marks as category like which category it comes in and then added to db also make sure wether it need quick response or otheer 
+to make sure the right problem must be highlighted or not once the new data is stored accordingly 
+the frontend must fetch tje daat amnd siplay the content witb the desctiption and the photo 
+and also rhew frontend must hav e the featuew to show most important which need quick action
+at the front or better to have a seperate section 
+so the frontend must display like a cards each problems 
+so on click cards it must expand and show the complete details along with the title 
+location,the mla or the area corperator and date of uplode timestamp and the pictures and
+the details description and the person who uploded his email at the end of this post
+
+the content and the photo in the compressed form the 
